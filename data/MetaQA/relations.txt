@@ -1,0 +1,9 @@
+has_imdb_rating
+starred_actors
+in_language
+has_imdb_votes
+has_tags
+written_by
+directed_by
+has_genre
+release_year

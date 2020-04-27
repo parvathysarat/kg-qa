@@ -41,8 +41,9 @@ class DataLoader():
     self.num_data = len(self.data)
     self.batches = np.arange(self.num_data)
     # build entity maps
-    self.entity_maps = self.entity_maps()
     self.max_local_entity, self.max_facts = 0,0
+    self.entity_maps = self.entity_maps()
+    
     self.num_kb_relation = len(relation_ids)
     self.max_query_word = 10
     self.local_entities = np.full((self.num_data, self.max_local_entity), len(self.entity_ids), dtype=int)
@@ -127,7 +128,7 @@ class DataLoader():
 
 
 
-  def add_entity_to_map(entity_ids, entities, global_to_local):
+  def add_entity_to_map(self,entity_ids, entities, global_to_local):
     for ent in entities:
       ent_text = ent['text']
       ent_g_id = entity_ids[ent_text]
@@ -145,8 +146,8 @@ class DataLoader():
       for doc in data['passages']:
         if doc['document_id'] not in self.documents: continue
         document = self.documents[int(doc['document_id'])]
-        self.add_entity_to_map(self.entity_ids, doc['document']['entities'], global_to_local)
-        if 'title' in doc: self.add_entity_to_map(self.entity_ids, doc['title']['entities'], global_to_local)
+        self.add_entity_to_map(self.entity_ids, document['document']['entities'], global_to_local)
+        if 'title' in doc: self.add_entity_to_map(self.entity_ids, document['title']['entities'], global_to_local)
 
         entity_maps[next_id] = global_to_local
         total_local_entity += len(global_to_local)
