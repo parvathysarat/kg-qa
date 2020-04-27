@@ -38,14 +38,17 @@ class DataLoader():
         self.data.append(line)
         self.max_rel_doc = max(self.max_rel_doc, len(line['passages']))
         self.max_facts = max(self.max_facts, 2*len(line['docs']['tuples']))
+        # print(2*len(line['docs']['tuples']))
     self.num_data = len(self.data)
     self.batches = np.arange(self.num_data)
     # build entity maps
-    self.max_local_entity, self.max_facts = 0,0
+    self.max_local_entity = 0
     self.max_document_word = 40
-    self.entity_maps = self.entity_maps()
-    
+    self.entity_maps = self.build_entity_maps()
+
     self.num_kb_relation = len(relation_ids)
+    print("Max facts",self.max_facts)
+    print("KB relation",self.num_kb_relation)    
     self.max_query_word = 10
     self.local_entities = np.full((self.num_data, self.max_local_entity), len(self.entity_ids), dtype=int)
     self.kb_adj_mats = np.empty(self.num_data, dtype=object)
@@ -59,16 +62,17 @@ class DataLoader():
     self.prepare_data()
 
   def prepare_data(self):
+    print("KB fact rels size",self.kb_fact_rels.shape)
     self.use_inverse_relation = False
     next_id = 0
     count_query_length = [0] * 50
     total_num_answerable_question = 0
     for sample in tqdm(self.data):
-        print(next_id)
+        if next_id%1000==0:print(next_id)
         # get a list of local entities
         global_to_local = self.entity_maps[next_id]
         
-        print((list(global_to_local.keys())))
+        # print((list(global_to_local.keys())))
         for global_entity, local_entity in global_to_local.items():
             if local_entity != 0: # skip question node
                 self.local_entities[next_id, local_entity] = global_entity
@@ -102,8 +106,8 @@ class DataLoader():
             if document_id not in self.doc_entity_index:
                 continue
             (global_entity_ids, word_ids, word_weights) = self.doc_entity_index[document_id]
-            try:entity_pos_local_entity_id += [global_to_local[global_entity_id] for global_entity_id in global_entity_ids]
-            except: print(global_entity_ids, type(global_entity_ids[0]))
+            entity_pos_local_entity_id += [global_to_local[global_entity_id] for global_entity_id in global_entity_ids]
+            # print(global_entity_ids, type(global_entity_ids[0]))
             entity_pos_word_id += [word_id + j * self.max_document_word for word_id in word_ids]
             entity_pos_word_weights += word_weights
 
@@ -140,7 +144,7 @@ class DataLoader():
       if ent_g_id not in global_to_local:
         global_to_local[entity_ids[ent_text]] = len(global_to_local)
 
-  def entity_maps(self):
+  def build_entity_maps(self):
     print(self.num_data)
     entity_maps = [None]*self.num_data
     total_local_entity =0.0
@@ -158,7 +162,7 @@ class DataLoader():
           continue
         document = self.documents[int(doc['document_id'])]
         self.add_entity_to_map(self.entity_ids, document['document']['entities'], global_to_local)
-        if 'title' in doc: self.add_entity_to_map(self.entity_ids, document['title']['entities'], global_to_local)
+        if 'title' in document: self.add_entity_to_map(self.entity_ids, document['title']['entities'], global_to_local)
 
       entity_maps[next_id] = global_to_local
       total_local_entity += len(global_to_local)

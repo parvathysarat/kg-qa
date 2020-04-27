@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/13v2ewYGPSqhAxbqg9OwIWdcJ-OcVWcU3
 """
 
-!git clone https://github.com/parvathysarat/kg-qa
+# !git clone https://github.com/parvathysarat/kg-qa
 
 import torch
 import numpy as np
@@ -15,10 +15,13 @@ from torch.autograd import Variable
 import torch.nn as nn
 class QuestionAnswering(nn.Module):
 
-    def __init__(self, entity_weights,rel_weights):
+    def __init__(self, entity_weights,rel_weights,num_word):
         super(QuestionAnswering, self).__init__()
 
         # entity embedding
+        self.entity_weights = entity_weights
+        self.rel_weights = rel_weights
+        self.num_word = num_word
         self.entity_embeddings = nn.Embedding.from_pretrained(self.entity_weights)  
         self.entity_embeddings.weight.requires_grad = False  
         # word embedding dimension = 50
@@ -28,9 +31,9 @@ class QuestionAnswering(nn.Module):
         self.relation_embeddings = nn.Embedding.from_pretrained(self.rel_weights)  
         self.relation_embeddings.weight.requires_grad = False          
         # pretrained entity embedding dimension = 50
-        word_dim, entity_dim = 50
-        # num_vocab = len(vocab_ids)
-        self.num_vocab = 13545
+        word_dim, entity_dim = 50,50
+        
+        self.num_vocab = self.num_word
         self.relation_linear = nn.Linear(in_features = 2*word_dim, out_features = entity_dim)
         self.k=3
         for i in range(3):
@@ -47,8 +50,8 @@ class QuestionAnswering(nn.Module):
 
         # initialize document embeddings
         
-        self.doc_embedding = nn.Embedding(num_embeddings = num_vocab+1, embedding_dim = word_dim, padding_idx = sef.num_vocab)  
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim,dropout = DROPOUT, num_layers = LSTM_LAYERS, bidirection=True)
+        self.doc_embedding = nn.Embedding(num_embeddings = self.num_vocab+1, embedding_dim = word_dim, padding_idx = self.num_vocab)  
+        # self.lstm = nn.LSTM(embedding_dim, hidden_dim,dropout = DROPOUT, num_layers = LSTM_LAYERS, bidirection=True)
 
         # create LSTMs
         self.node_encoder = nn.LSTM(input_size = word_dim, hidden_size = entity_dim, batch_first = True)
@@ -61,6 +64,8 @@ class QuestionAnswering(nn.Module):
         self.elu = nn.ELU()
 
         # dropout
+        lstm_dropout = 0.3
+        linear_dropout = 0.2
         self.lstm_drop = nn.Dropout(p=lstm_dropout)
         self.linear_drop = nn.Dropout(p=linear_dropout)
 
