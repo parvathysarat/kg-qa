@@ -1,7 +1,7 @@
 # kg-qa
 Question Answering using KG embeddings augmented by Text corpus
 
-Run qa_task_metaqa.ipynb notebook to train on MetaQA dataset.
+qa_task_metaqa.ipynb notebook can be run to train on MetaQA dataset.
 
 Folders :
 - ./data/ contains training files:
