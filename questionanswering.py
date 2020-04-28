@@ -15,23 +15,33 @@ from torch.autograd import Variable
 import torch.nn as nn
 class QuestionAnswering(nn.Module):
 
-    def __init__(self, entity_weights,rel_weights,num_word):
+    def __init__(self, entity_weights,rel_weights,num_word, num_entity):
         super(QuestionAnswering, self).__init__()
 
         # entity embedding
         self.entity_weights = entity_weights
         self.rel_weights = rel_weights
         self.num_word = num_word
-        self.entity_embeddings = nn.Embedding.from_pretrained(self.entity_weights)  
+        self.num_entity = num_entity
+        self.entity_embeddings = nn.Embedding(num_embeddings= entity_weights.shape[0] + 1, embedding_dim=50, padding_idx=entity_weights.shape[0])
+        self.entity_embeddings.weight = nn.Parameter(self.entity_weights)  
+
+        # self.entity_embeddings = nn.Embedding.from_pretrained(self.entity_weights)  
         self.entity_embeddings.weight.requires_grad = False  
         # word embedding dimension = 50
         self.entity_linear = nn.Linear(in_features = 50,out_features = 50)
 
         # relation embedding
-        self.relation_embeddings = nn.Embedding.from_pretrained(self.rel_weights)  
+        self.relation_embeddings = nn.Embedding(num_embeddings= rel_weights.shape[0] + 1, embedding_dim=50, padding_idx=rel_weights.shape[0])
+        self.relation_embeddings.weight = nn.Parameter(self.rel_weights)  
+
+        # self.relation_embeddings = nn.Embedding.from_pretrained(self.rel_weights)  
         self.relation_embeddings.weight.requires_grad = False          
         # pretrained entity embedding dimension = 50
+        
         word_dim, entity_dim = 50,50
+        self.word_dim = word_dim
+        self.entity_dim = entity_dim
         
         self.num_vocab = self.num_word
         self.relation_linear = nn.Linear(in_features = 2*word_dim, out_features = entity_dim)
@@ -85,8 +95,8 @@ class QuestionAnswering(nn.Module):
 
         batch_size, max_local_entity = local_entity.shape
         _, max_relevant_doc, max_document_word = document_text.shape
-        _, max_fact = kb_fact_rel.shape
-
+        _, max_fact = kb_fact_rel.shape 
+        
         # numpy to tensor
         local_entity = use_cuda(Variable(torch.from_numpy(local_entity).type('torch.LongTensor'), requires_grad=False))
         local_entity_mask = use_cuda((local_entity != self.num_entity).type('torch.FloatTensor'))
@@ -106,7 +116,7 @@ class QuestionAnswering(nn.Module):
         assert pagerank_d.requires_grad == False
 
         # encode query
-        query_word_emb = self.word_embedding(query_text) # batch_size, max_query_word, word_dim
+        query_word_emb = self.doc_embedding(query_text) # batch_size, max_query_word, word_dim
         query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.entity_dim)) # 1, batch_size, entity_dim
         query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1) # batch_size, 1, entity_dim
         query_rel_emb = query_node_emb # batch_size, 1, entity_dim
@@ -122,8 +132,9 @@ class QuestionAnswering(nn.Module):
         fact2entity_val = torch.FloatTensor(f2e_val)
         fact2entity_mat = use_cuda(torch.sparse.FloatTensor(fact2entity_index, fact2entity_val, torch.Size([batch_size, max_local_entity, max_fact])))
         
+        print(max_fact,self.relation_embeddings,kb_fact_rel,kb_fact_rel.shape)
         # load fact embedding
-        local_fact_emb = self.relation_embedding(kb_fact_rel) # batch_size, max_fact, 2 * word_dim
+        local_fact_emb = self.relation_embeddings(kb_fact_rel) # batch_size, max_fact, 2 * word_dim
         if self.has_relation_kge:
             local_fact_emb = torch.cat((local_fact_emb, self.relation_kge(kb_fact_rel)), dim=2) # batch_size, max_fact, 2 * word_dim + kge_dim
         local_fact_emb = self.relation_linear(local_fact_emb) # batch_size, max_fact, entity_dim

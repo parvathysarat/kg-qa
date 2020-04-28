@@ -47,6 +47,7 @@ class DataLoader():
     self.entity_maps = self.build_entity_maps()
 
     self.num_kb_relation = len(relation_ids)
+    assert self.num_kb_relation==9
     print("Max facts",self.max_facts)
     print("KB relation",self.num_kb_relation)    
     self.max_query_word = 10
@@ -171,82 +172,82 @@ class DataLoader():
 
     return entity_maps
           
-    def build_entity_pos(self, sample_ids):
-        """Index the position of each entity in documents"""
-        entity_pos_batch = np.array([], dtype=int)
-        entity_pos_entity_id = np.array([], dtype=int)
-        entity_pos_word_id = np.array([], dtype=int)
-        vals = np.array([], dtype=float)
+  def build_entity_pos(self, sample_ids):
+      """Index the position of each entity in documents"""
+      entity_pos_batch = np.array([], dtype=int)
+      entity_pos_entity_id = np.array([], dtype=int)
+      entity_pos_word_id = np.array([], dtype=int)
+      vals = np.array([], dtype=float)
 
-        for i, sample_id in enumerate(sample_ids):
-            (entity_id, word_id, val) = self.entity_poses[sample_id]
-            num_nonzero = len(val)
-            entity_pos_batch = np.append(entity_pos_batch, np.full(num_nonzero, i, dtype=int))
-            entity_pos_entity_id = np.append(entity_pos_entity_id, entity_id)
-            entity_pos_word_id = np.append(entity_pos_word_id, word_id)
-            vals = np.append(vals, val)
-        return (entity_pos_batch.astype(int), entity_pos_entity_id.astype(int), entity_pos_word_id.astype(int), vals)
+      for i, sample_id in enumerate(sample_ids):
+          (entity_id, word_id, val) = self.entity_poses[sample_id]
+          num_nonzero = len(val)
+          entity_pos_batch = np.append(entity_pos_batch, np.full(num_nonzero, i, dtype=int))
+          entity_pos_entity_id = np.append(entity_pos_entity_id, entity_id)
+          entity_pos_word_id = np.append(entity_pos_word_id, word_id)
+          vals = np.append(vals, val)
+      return (entity_pos_batch.astype(int), entity_pos_entity_id.astype(int), entity_pos_word_id.astype(int), vals)
+  
+  def reset_batches(self, is_sequential=True):
+      if is_sequential:
+          self.batches = np.arange(self.num_data)
+      else:
+          self.batches = np.random.permutation(self.num_data)
 
-    def build_kb_adj_mat(self, sample_ids, fact_dropout):
+  def build_kb_adj_mat(self, sample_ids, fact_dropout):
 
-        mats0_batch = np.array([], dtype=int)
-        mats0_0 = np.array([], dtype=int)
-        mats0_1 = np.array([], dtype=int)
-        vals0 = np.array([], dtype=float)
+      mats0_batch = np.array([], dtype=int)
+      mats0_0 = np.array([], dtype=int)
+      mats0_1 = np.array([], dtype=int)
+      vals0 = np.array([], dtype=float)
 
-        mats1_batch = np.array([], dtype=int)
-        mats1_0 = np.array([], dtype=int)
-        mats1_1 = np.array([], dtype=int)
-        vals1 = np.array([], dtype=float)
+      mats1_batch = np.array([], dtype=int)
+      mats1_0 = np.array([], dtype=int)
+      mats1_1 = np.array([], dtype=int)
+      vals1 = np.array([], dtype=float)
 
-        for i, sample_id in enumerate(sample_ids):
-            (mat0_0, mat0_1, val0), (mat1_0, mat1_1, val1) = self.kb_adj_mats[sample_id]
-            assert len(val0) == len(val1)
-            num_fact = len(val0)
-            num_keep_fact = int(np.floor(num_fact * (1 - fact_dropout)))
-            mask_index = np.random.permutation(num_fact)[ : num_keep_fact]
-            # mat0
-            mats0_batch = np.append(mats0_batch, np.full(len(mask_index), i, dtype=int))
-            mats0_0 = np.append(mats0_0, mat0_0[mask_index])
-            mats0_1 = np.append(mats0_1, mat0_1[mask_index])
-            vals0 = np.append(vals0, val0[mask_index])
-            # mat1
-            mats1_batch = np.append(mats1_batch, np.full(len(mask_index), i, dtype=int))
-            mats1_0 = np.append(mats1_0, mat1_0[mask_index])
-            mats1_1 = np.append(mats1_1, mat1_1[mask_index])
-            vals1 = np.append(vals1, val1[mask_index])
+      for i, sample_id in enumerate(sample_ids):
+          (mat0_0, mat0_1, val0), (mat1_0, mat1_1, val1) = self.kb_adj_mats[sample_id]
+          assert len(val0) == len(val1)
+          num_fact = len(val0)
+          num_keep_fact = int(np.floor(num_fact * (1 - fact_dropout)))
+          mask_index = np.random.permutation(num_fact)[ : num_keep_fact]
+          # mat0
+          mats0_batch = np.append(mats0_batch, np.full(len(mask_index), i, dtype=int))
+          mats0_0 = np.append(mats0_0, mat0_0[mask_index])
+          mats0_1 = np.append(mats0_1, mat0_1[mask_index])
+          vals0 = np.append(vals0, val0[mask_index])
+          # mat1
+          mats1_batch = np.append(mats1_batch, np.full(len(mask_index), i, dtype=int))
+          mats1_0 = np.append(mats1_0, mat1_0[mask_index])
+          mats1_1 = np.append(mats1_1, mat1_1[mask_index])
+          vals1 = np.append(vals1, val1[mask_index])
 
-        return (mats0_batch, mats0_0, mats0_1, vals0), (mats1_batch, mats1_0, mats1_1, vals1)
-
-
-    def reset_batches(self, is_sequential=True):
-        if is_sequential:
-            self.batches = np.arange(self.num_data)
-        else:
-            self.batches = np.random.permutation(self.num_data)
-
-
-    def get_batch(self, iteration, batch_size, fact_dropout):
-
-        sample_ids = self.batches[batch_size * iteration: batch_size * (iteration + 1)]
-        
-        return self.local_entities[sample_ids], \
-               self.q2e_adj_mats[sample_ids], \
-               (self.build_kb_adj_mat(sample_ids, fact_dropout=fact_dropout)), \
-               self.kb_fact_rels[sample_ids], \
-               self.query_texts[sample_ids], \
-               self.build_document_text(sample_ids), \
-               (self.build_entity_pos(sample_ids)), \
-               self.answer_dists[sample_ids]
+      return (mats0_batch, mats0_0, mats0_1, vals0), (mats1_batch, mats1_0, mats1_1, vals1)
 
 
-    def build_document_text(self, sample_ids):
-        """Index tokenized documents for each sample"""
-        document_text = np.full((len(sample_ids), self.max_relevant_doc, self.max_document_word), len(self.word2id), dtype=int)
-        for i, sample_id in enumerate(sample_ids):
-            for j, rel_doc_id in enumerate(self.rel_document_ids[sample_id]):
-                if rel_doc_id not in self.document_texts:
-                    continue
-                document_text[i, j] = self.document_texts[rel_doc_id]
-        return document_text
+
+  def get_batch(self, iteration, batch_size, fact_dropout):
+
+      sample_ids = self.batches[batch_size * iteration: batch_size * (iteration + 1)]
+      
+      return self.local_entities[sample_ids], \
+              self.q2e_adj_mats[sample_ids], \
+              (self.build_kb_adj_mat(sample_ids, fact_dropout=fact_dropout)), \
+              self.kb_fact_rels[sample_ids], \
+              self.query_texts[sample_ids], \
+              self.build_document_text(sample_ids), \
+              (self.build_entity_pos(sample_ids)), \
+              self.answer_dists[sample_ids]
+
+
+  def build_document_text(self, sample_ids):
+      """Index tokenized documents for each sample"""
+      document_text = np.full((len(sample_ids), self.max_rel_doc, self.max_document_word), len(self.vocab_ids), dtype=int)
+      for i, sample_id in enumerate(sample_ids):
+          for j, rel_doc_id in enumerate(self.rel_document_ids[sample_id]):
+              if rel_doc_id not in self.all_doc_texts:
+                  continue
+              document_text[i, j] = self.all_doc_texts[rel_doc_id]
+      return document_text
 
